@@ -5,6 +5,7 @@
 
 #define PIN 6
 #define VOICE_BUSY_PIN 2
+#define MANUAL_STOP_PIN 3
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -36,6 +37,7 @@ uint32_t none_color = strip.Color(0, 0, 0);
 SoftwareSerial portOne(10, 11);
 
 int input;
+byte inputbuffer[1];
 int led_mode;
 int input_led_mode;
 byte tts[TTS_SIZE];
@@ -55,18 +57,30 @@ void setup() {
   // End of trinket special code
 
   pinMode(VOICE_BUSY_PIN, INPUT);
-  
+  pinMode(MANUAL_STOP_PIN, OUTPUT);
+
+  digitalWrite(MANUAL_STOP_PIN, LOW);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   Serial.begin(9600);
   
   // Start each software serial port
   portOne.begin(9600);
-  
+
+  attachInterrupt(digitalPinToInterrupt(MANUAL_STOP_PIN), manualStop, RISING);
+
+  stop();
   Serial.println("Set up done!");
 }
-byte text[10] = {0xFD,0x00,0x07,0x01,0x01,0xC4,0xE3,0xBA,0xC3,0xA4};
+byte voice_stop[5] = {0xFD,0x00,0x02,0x03,0xFC};
 void loop() {
+  /*Serial.println("Reading input");
+  Serial.readBytesUntil(END_SYMBOL, input_tts, TTS_SIZE);
+  for(count = 0; count < sizeof(input_tts); count++) {
+    Serial.print(input_tts[count], HEX);
+  }
+  Serial.println("\n");*/
+  
   voice_busy = digitalRead(VOICE_BUSY_PIN);
 
   if (tts_set == 1) {
@@ -80,17 +94,20 @@ void loop() {
     repeat--;
   }
 
-  if (repeat <= 0) {
+  if (repeat < 0) {
     stop();
   }
   
   input_led_mode = led_mode;
   while (Serial.available()) {
     input = Serial.read();
+    Serial.print("input: ");
+    Serial.println(input, HEX);
     switch (input) {
       case LED_START:
         Serial.print("Led mode: ");
-        input_led_mode = Serial.parseInt();
+        Serial.readBytes(inputbuffer, 1);
+        input_led_mode = inputbuffer[0];
         Serial.println(input_led_mode);
         break;
       case TTS_START:
@@ -104,8 +121,9 @@ void loop() {
         break;
       case REPEAT_INDICATOR:
         Serial.print("Repeat: ");
-        repeat = Serial.parseInt();
-        Serial.println(repeat);
+        Serial.readBytes(inputbuffer, 1);
+        repeat = inputbuffer[0];
+        Serial.println(repeat, DEC);
         break;
       case END_SYMBOL:
         stop();
@@ -147,12 +165,19 @@ void handleTTS() {
   if (tts_set == 0 || voice_started == 1) {
     return;
   }
-  portOne.write(text, sizeof(text));
+  portOne.write(tts, sizeof(tts));
 }
 
 void arrayCopy(byte src[], byte target[], int limit) {
   for (count = 0; count < limit; count++) {
     target[count] = src[count];
+  }
+}
+
+void manualStop() {
+  if (digitalRead(MANUAL_STOP_PIN) == HIGH) {
+    Serial.println("manully stopped!");
+    stop();  
   }
 }
 
@@ -169,6 +194,7 @@ void stopLed() {
 }
 
 void stopVoice() {
+  portOne.write(voice_stop, sizeof(voice_stop));
   tts_set = 0;
   voice_started = 0;
 }
