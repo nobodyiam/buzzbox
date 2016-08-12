@@ -67,8 +67,6 @@ void setup() {
 byte text[10] = {0xFD,0x00,0x07,0x01,0x01,0xC4,0xE3,0xBA,0xC3,0xA4};
 void loop() {
   voice_busy = digitalRead(VOICE_BUSY_PIN);
-  //Serial.print("Voice busy: ");
-  //Serial.println(voice_busy);
 
   if (repeat <= 0) {
     repeat = 5; //reset
@@ -76,27 +74,9 @@ void loop() {
   }
 
   if (tts_set == 1) {
-    /*Serial.print("Voice busy: ");
-    Serial.println(voice_busy);
-    Serial.print("voice_started: ");
-    Serial.println(voice_started);
-    Serial.print("repeat: ");
-    Serial.println(repeat);*/
     if (voice_busy == 1 && voice_started == 0) {
-      Serial.print("Voice busy: ");
-    Serial.println(voice_busy);
-    Serial.print("voice_started: ");
-    Serial.println(voice_started);
-    Serial.print("repeat: ");
-    Serial.println(repeat);
       voice_started = 1;
     } else if (voice_started == 1 && voice_busy == 0) {
-      Serial.print("Voice busy: ");
-    Serial.println(voice_busy);
-    Serial.print("voice_started: ");
-    Serial.println(voice_started);
-    Serial.print("repeat: ");
-    Serial.println(repeat);
       repeat--;
       voice_started = 0;
     }
@@ -120,8 +100,6 @@ void loop() {
           voice_started = 0;
           arrayCopy(input_tts, tts, TTS_SIZE);
         }
-        Serial.print("tts_set new: ");
-        Serial.println(tts_set);
         break;
       case END_SYMBOL:
         stop();
@@ -132,19 +110,15 @@ void loop() {
         break;
     }
   }
+  
+  led_mode = handleLedMode(input_led_mode);
 
   if(tts_set == 1) {
     handleTTS();
   }
-  
-  led_mode = handleLedMode(input_led_mode);
-  //Serial.print("led mode: ");
-  //Serial.println(led_mode);
 }
 
 int handleLedMode(int mode) {
-  Serial.print("input mode: ");
-  Serial.println(mode);
   switch (mode) {
     case 1:
       alarm();
@@ -167,9 +141,7 @@ void handleTTS() {
   if (tts_set == 0 || voice_started == 1) {
     return;
   }
-  Serial.println("Handle TTS");
   portOne.write(text, sizeof(text));
-  Serial.println("Handle TTS Done");
 }
 
 void arrayCopy(byte src[], byte target[], int limit) {
