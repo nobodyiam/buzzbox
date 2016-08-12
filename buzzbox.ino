@@ -197,18 +197,23 @@ void alarm() {
 }
 
 void blingbling() {
-  wipe_inner_ring_color(inner_ring_color);
+  
   for (int q = 0; q < 2; q++) {
     for (uint16_t i = 0; i < 24; i = i + 2) {
       strip.setPixelColor(i + q, outer_ring_color);
     }
+    if (q % 2 == 0) {
+      wipe_inner_ring_color(inner_ring_color);
+    } else {
+      wipe_inner_ring_color(none_color);
+    }
     strip.show();
 
     delay(300);
-
     for (uint16_t i = 0; i < 24; i = i + 1) {
       strip.setPixelColor(i + q, 0);
     }
+    strip.show();
   }
 }
 
