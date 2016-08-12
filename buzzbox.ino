@@ -42,7 +42,9 @@ byte input_tts[TTS_SIZE];
 int count;
 int tts_set = 0;
 int voice_busy = 0;     // variable to store the read value
-int repeat = 3;
+int voice_started = 0;
+int led_started = 0;
+int repeat = 5;
 
 void setup() {
   // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
@@ -51,32 +53,56 @@ void setup() {
 #endif
   // End of trinket special code
 
- pinMode(VOICE_BUSY_PIN, INPUT);
+  pinMode(VOICE_BUSY_PIN, INPUT);
+  
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   Serial.begin(9600);
+  
   // Start each software serial port
   portOne.begin(9600);
+  
   Serial.println("Set up done!");
 }
 byte text[10] = {0xFD,0x00,0x07,0x01,0x01,0xC4,0xE3,0xBA,0xC3,0xA4};
 void loop() {
-  //Serial.println("loop");
   voice_busy = digitalRead(VOICE_BUSY_PIN);
   //Serial.print("Voice busy: ");
   //Serial.println(voice_busy);
 
-  /*if (repeat <= 0) {
+  if (repeat <= 0) {
+    repeat = 5; //reset
     stop();
   }
 
-  if (tts_set == 1 && !voice_busy) {
+  if (tts_set == 1) {
+    /*Serial.print("Voice busy: ");
+    Serial.println(voice_busy);
+    Serial.print("voice_started: ");
+    Serial.println(voice_started);
+    Serial.print("repeat: ");
+    Serial.println(repeat);*/
+    if (voice_busy == 1 && voice_started == 0) {
+      Serial.print("Voice busy: ");
+    Serial.println(voice_busy);
+    Serial.print("voice_started: ");
+    Serial.println(voice_started);
+    Serial.print("repeat: ");
+    Serial.println(repeat);
+      voice_started = 1;
+    } else if (voice_started == 1 && voice_busy == 0) {
+      Serial.print("Voice busy: ");
+    Serial.println(voice_busy);
+    Serial.print("voice_started: ");
+    Serial.println(voice_started);
+    Serial.print("repeat: ");
+    Serial.println(repeat);
+      repeat--;
+      voice_started = 0;
+    }
+  } else if (led_started == 1) {
     repeat--;
   }
-
-  if (tts_set == 0 && led_mode != 0) {
-    repeat--;
-  }*/
   
   input_led_mode = led_mode;
   if (Serial.available()) {
@@ -89,12 +115,16 @@ void loop() {
       case TTS_START:
         Serial.println("TTS Start");
         if (Serial.readBytesUntil(END_SYMBOL, input_tts, TTS_SIZE) > 0) {
+          Serial.println("TTS Started");
           tts_set = 1;
+          voice_started = 0;
           arrayCopy(input_tts, tts, TTS_SIZE);
         }
+        Serial.print("tts_set new: ");
+        Serial.println(tts_set);
         break;
       case END_SYMBOL:
-        input_led_mode = 0;
+        stop();
         Serial.println("Stop");
         break;
       default:
@@ -103,21 +133,19 @@ void loop() {
     }
   }
 
-  led_mode = handleLedMode(input_led_mode);
-  Serial.print("led mode: ");
-  Serial.println(led_mode);
-  /*if(voice_busy == 0) {
+  if(tts_set == 1) {
     handleTTS();
-  }*/
+  }
+  
+  led_mode = handleLedMode(input_led_mode);
+  //Serial.print("led mode: ");
+  //Serial.println(led_mode);
 }
 
 int handleLedMode(int mode) {
   Serial.print("input mode: ");
   Serial.println(mode);
   switch (mode) {
-    case 0:
-      stop();
-      break;
     case 1:
       alarm();
       break;
@@ -128,13 +156,15 @@ int handleLedMode(int mode) {
       marquee();
       break;
     default:
+      led_started = 0;
       return led_mode;
   }
+  led_started = 1;
   return mode;
 }
 
 void handleTTS() {
-  if (tts_set == 0) {
+  if (tts_set == 0 || voice_started == 1) {
     return;
   }
   Serial.println("Handle TTS");
@@ -149,9 +179,19 @@ void arrayCopy(byte src[], byte target[], int limit) {
 }
 
 void stop() {
+  stopLed();
+  stopVoice();
+}
+
+void stopLed() {
   colorWipe(strip.Color(0, 0, 0), 0);
-  tts_set = 0;
+  led_started = 0;
   led_mode = 0;
+}
+
+void stopVoice() {
+  tts_set = 0;
+  voice_started = 0;
 }
 
 void wipe_outer_ring_color(uint32_t c) {
