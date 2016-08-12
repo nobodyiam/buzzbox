@@ -22,6 +22,7 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(31, PIN, NEO_GRB + NEO_KHZ800);
 // on a live circuit...if you must, connect GND first.
 
 const int LED_START = 94; //^
+const int REPEAT_INDICATOR = 35; //#
 const int TTS_START = 126; //~
 const int END_SYMBOL = 36; //$
 const int TTS_SIZE = 50;
@@ -44,7 +45,7 @@ int tts_set = 0;
 int voice_busy = 0;     // variable to store the read value
 int voice_started = 0;
 int led_started = 0;
-int repeat = 5;
+int repeat = 1;
 
 void setup() {
   // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
@@ -68,11 +69,6 @@ byte text[10] = {0xFD,0x00,0x07,0x01,0x01,0xC4,0xE3,0xBA,0xC3,0xA4};
 void loop() {
   voice_busy = digitalRead(VOICE_BUSY_PIN);
 
-  if (repeat <= 0) {
-    repeat = 5; //reset
-    stop();
-  }
-
   if (tts_set == 1) {
     if (voice_busy == 1 && voice_started == 0) {
       voice_started = 1;
@@ -83,14 +79,19 @@ void loop() {
   } else if (led_started == 1) {
     repeat--;
   }
+
+  if (repeat <= 0) {
+    stop();
+  }
   
   input_led_mode = led_mode;
-  if (Serial.available()) {
+  while (Serial.available()) {
     input = Serial.read();
     switch (input) {
       case LED_START:
-        Serial.println("Led Start");
+        Serial.print("Led mode: ");
         input_led_mode = Serial.parseInt();
+        Serial.println(input_led_mode);
         break;
       case TTS_START:
         Serial.println("TTS Start");
@@ -100,6 +101,11 @@ void loop() {
           voice_started = 0;
           arrayCopy(input_tts, tts, TTS_SIZE);
         }
+        break;
+      case REPEAT_INDICATOR:
+        Serial.print("Repeat: ");
+        repeat = Serial.parseInt();
+        Serial.println(repeat);
         break;
       case END_SYMBOL:
         stop();
@@ -151,6 +157,7 @@ void arrayCopy(byte src[], byte target[], int limit) {
 }
 
 void stop() {
+  repeat = 1; //reset
   stopLed();
   stopVoice();
 }
