@@ -6,6 +6,9 @@
 #define PIN 6
 #define VOICE_BUSY_PIN 2
 #define MANUAL_STOP_PIN 3
+#define ALWAYS_HIGH_PIN 7
+#define HIGH_WHEN_ALARM 8
+#define ALWAYS_LOW_PIN 9
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -58,12 +61,19 @@ void setup() {
 
   pinMode(VOICE_BUSY_PIN, INPUT);
   pinMode(MANUAL_STOP_PIN, OUTPUT);
+  pinMode(ALWAYS_HIGH_PIN, OUTPUT);
+  pinMode(HIGH_WHEN_ALARM, OUTPUT);
+  pinMode(ALWAYS_LOW_PIN, OUTPUT);
 
   digitalWrite(MANUAL_STOP_PIN, LOW);
+  digitalWrite(ALWAYS_HIGH_PIN, HIGH);
+  digitalWrite(ALWAYS_LOW_PIN, LOW);
+  digitalWrite(HIGH_WHEN_ALARM, LOW);
+
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
   Serial.begin(9600);
-  
+
   // Start each software serial port
   portOne.begin(9600);
 
@@ -72,32 +82,35 @@ void setup() {
   stop();
   Serial.println("Set up done!");
 }
-byte voice_stop[5] = {0xFD,0x00,0x02,0x03,0xFC};
+byte voice_stop[5] = {0xFD, 0x00, 0x02, 0x03, 0xFC};
 void loop() {
   /*Serial.println("Reading input");
-  Serial.readBytesUntil(END_SYMBOL, input_tts, TTS_SIZE);
-  for(count = 0; count < sizeof(input_tts); count++) {
+    Serial.readBytesUntil(END_SYMBOL, input_tts, TTS_SIZE);
+    for(count = 0; count < sizeof(input_tts); count++) {
     Serial.print(input_tts[count], HEX);
-  }
-  Serial.println("\n");*/
-  
+    }
+    Serial.println("\n");*/
+
   voice_busy = digitalRead(VOICE_BUSY_PIN);
 
-  if (tts_set == 1) {
-    if (voice_busy == 1 && voice_started == 0) {
-      voice_started = 1;
-    } else if (voice_started == 1 && voice_busy == 0) {
+  if (tts_set == 1 || led_started == 1) {
+    digitalWrite(HIGH_WHEN_ALARM, HIGH);
+    if (tts_set == 1) {
+      if (voice_busy == 1 && voice_started == 0) {
+        voice_started = 1;
+      } else if (voice_started == 1 && voice_busy == 0) {
+        repeat--;
+        voice_started = 0;
+      }
+    } else if (led_started == 1) {
       repeat--;
-      voice_started = 0;
     }
-  } else if (led_started == 1) {
-    repeat--;
   }
 
   if (repeat < 0) {
     stop();
   }
-  
+
   input_led_mode = led_mode;
   while (Serial.available()) {
     input = Serial.read();
@@ -134,10 +147,10 @@ void loop() {
         break;
     }
   }
-  
+
   led_mode = handleLedMode(input_led_mode);
 
-  if(tts_set == 1) {
+  if (tts_set == 1) {
     handleTTS();
   }
 }
@@ -177,7 +190,7 @@ void arrayCopy(byte src[], byte target[], int limit) {
 void manualStop() {
   if (digitalRead(MANUAL_STOP_PIN) == HIGH) {
     Serial.println("manully stopped!");
-    stop();  
+    stop();
   }
 }
 
@@ -223,7 +236,6 @@ void alarm() {
 }
 
 void blingbling() {
-  
   for (int q = 0; q < 2; q++) {
     for (uint16_t i = 0; i < 24; i = i + 2) {
       strip.setPixelColor(i + q, outer_ring_color);
