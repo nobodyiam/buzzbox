@@ -3,12 +3,16 @@
 #include <avr/power.h>
 #endif
 
-#define PIN 6
+#define LED_PIN 6
+#define NUM_PIXELS 31
+
 #define VOICE_BUSY_PIN 2
 #define MANUAL_STOP_PIN 3
-#define ALWAYS_HIGH_PIN 7
-#define HIGH_WHEN_ALARM 8
-#define ALWAYS_LOW_PIN 9
+#define SOFT_TX 11
+#define SOFT_RX 10
+#define ALWAYS_HIGH_PIN 9
+#define ALWAYS_LOW_PIN 8
+#define HIGH_WHEN_ALARM 7
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -18,7 +22,7 @@
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(31, PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -29,7 +33,7 @@ const int LED_START = 94; //^
 const int REPEAT_INDICATOR = 35; //#
 const int TTS_START = 126; //~
 const int END_SYMBOL = 36; //$
-const int TTS_SIZE = 50;
+const int TTS_SIZE = 100;
 
 uint32_t outer_ring_color = strip.Color(234, 0, 71);
 uint32_t inner_ring_color = strip.Color(1, 201, 234);
@@ -37,7 +41,7 @@ uint32_t none_color = strip.Color(0, 0, 0);
 
 #include <SoftwareSerial.h>
 // software serial #1: RX = digital pin 10, TX = digital pin 11
-SoftwareSerial portOne(10, 11);
+SoftwareSerial portOne(SOFT_RX, SOFT_TX);
 
 int input;
 byte inputbuffer[1];
@@ -108,6 +112,7 @@ void loop() {
   }
 
   if (repeat < 0) {
+    digitalWrite(HIGH_WHEN_ALARM, LOW);
     stop();
   }
 
@@ -149,7 +154,6 @@ void loop() {
   }
 
   led_mode = handleLedMode(input_led_mode);
-
   if (tts_set == 1) {
     handleTTS();
   }
